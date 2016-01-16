@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 from mqrpclib import RpcProxy
 import logging
-from time import sleep
 from sys import stdout
 
 
