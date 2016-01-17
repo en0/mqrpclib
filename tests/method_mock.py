@@ -9,3 +9,7 @@ class MethodMock(object):
     @property
     def delivery_tag(self):
         return ''
+
+    @property
+    def queue(self):
+        return self._routing_key
