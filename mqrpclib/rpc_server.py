@@ -6,14 +6,51 @@ import logging
 
 
 class RpcServer(object):
-    def __init__(self, url, prefetch=1, desc=None):
+    @classmethod
+    def from_uri(cls, uri, prefetch=None):
+        _chan = pika.BlockingConnection(
+            pika.URLParameters(uri)
+        ).channel()
+
+        if prefetch:
+            _chan.basic_qos(prefetch_count=prefetch)
+
+        return cls(_chan)
+
+    @property
+    def service_description(self):
+        return self._desc
+
+    @service_description.setter
+    def service_description(self, value):
+        self._desc = value
+
+    def register(self, name, version, fn):
+        if name not in self._procs:
+            self._procs[name] = dict(
+                versions={},
+                queue=self._chan.queue_declare(name)
+            )
+            self._chan.basic_consume(
+                self._request_handler,
+                queue=name
+            )
+
+        elif version in self._procs[name]['versions']:
+            raise Exception(
+                "Attempt to register a duplicate version on '{}'".format(name)
+            )
+
+        self._procs[name]["versions"][version] = fn
+
+    def run(self):
+        self._chan.start_consuming()
+
+    def __init__(self, channel):
         self._procs = {}
-        self._desc = desc or "Not Available"
-        parameters = pika.URLParameters(url)
+        self._desc = ''
         self._logger = logging.getLogger(__name__)
-        self._conn = pika.BlockingConnection(parameters)
-        self._chan = self._conn.channel()
-        self._chan.basic_qos(prefetch_count=prefetch)
+        self._chan = channel
         self.register("_help", "v1", self._help)
 
     def _help(self, name=None, version=None):
@@ -107,24 +144,3 @@ class RpcServer(object):
                     correlation_id=prop.correlation_id
                 )
             )
-
-    def register(self, name, version, fn, desc=None):
-        if name not in self._procs:
-            self._procs[name] = dict(
-                versions={},
-                queue=self._chan.queue_declare(name)
-            )
-            self._chan.basic_consume(
-                self._request_handler,
-                queue=name
-            )
-
-        elif version in self._procs[name]['versions']:
-            raise Exception(
-                "Attempt to register a duplicate version on '{}'".format(name)
-            )
-
-        self._procs[name]["versions"][version] = fn
-
-    def run(self):
-        self._chan.start_consuming()
