@@ -19,9 +19,6 @@ class TestProxy(RpcProxy):
     def method1_v1(self, a, b):
         return self.remote_exec("method1", "v1", args={"a": a, "b": b})
 
-    def method2_v1(self):
-        return self.remote_exec("method2", "v1")
-
 
 def show_response(resp):
     if resp:
