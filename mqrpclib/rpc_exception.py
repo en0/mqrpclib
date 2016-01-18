@@ -1,6 +1,12 @@
 LIBRARY_EXCEPTION_MASK = 0xF0000000
+LIBRARY_EXCEPTION_MASK_CLIENT = 0x00F00000
 
 
+# Client side exceptions
+EXCEPTION_CLIENT_TIMEOUT = LIBRARY_EXCEPTION_MASK_CLIENT | 1
+
+
+# Server side exceptions
 class ExceptionBase(Exception):
     def __init__(self, code, message=None):
         super(ExceptionBase, self).__init__(message)
