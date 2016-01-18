@@ -1,6 +1,7 @@
 from contextlib import contextmanager
 from rpc_request_message import RpcRequestMessage
 from rpc_response_message import RpcResponseMessage
+from rpc_exception import EXCEPTION_CLIENT_TIMEOUT
 from time import time
 from uuid import uuid4
 import logging
@@ -155,7 +156,8 @@ class RpcProxy(object):
             while not self.has_response(correlation_id):
                 if _expr_time and _expr_time > time():
                     return RpcResponseMessage(
-                        0, error_message="Request timed out."
+                        EXCEPTION_CLIENT_TIMEOUT,
+                        error_message="Request timed out."
                     )
 
         _resp = RpcResponseMessage.loads(self._response[correlation_id])
