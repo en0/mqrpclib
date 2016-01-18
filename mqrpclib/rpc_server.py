@@ -8,6 +8,20 @@ import logging
 class RpcServer(object):
     @classmethod
     def from_uri(cls, uri, prefetch=None):
+        """ Create a RPC Sserver using a url.
+
+        This method will connect to rabbit and create a channel that is then
+        passed to the RpcService initialization.
+
+        Arguments:
+            uri:
+                A pika.URLParameters url that defines how to connect.
+            prefetch:
+                Set the qos prefetch on queues used by this service.
+
+        Returns:
+            An instanciated RpcServer class with connected pika channel.
+        """
         _chan = pika.BlockingConnection(
             pika.URLParameters(uri)
         ).channel()
@@ -19,6 +33,7 @@ class RpcServer(object):
 
     @property
     def service_description(self):
+        """ The help method's Service Description value """
         return self._desc
 
     @service_description.setter
@@ -26,6 +41,25 @@ class RpcServer(object):
         self._desc = value
 
     def register(self, name, version, fn):
+        """ Expose a method or function as a RPC method.
+
+        Create a queue that can except requests from a remote client that will
+        be dispatched to the provided function or method. This method is
+        registered under a specific version tag to allow server side version
+        management.
+
+        Arguments:
+            name:
+                The exposed name of the method.
+            version:
+                The version tag for this function associated with this name.
+            fn:
+                The function or method to execute when requests are recieved for
+                this name and version.
+
+        Raises:
+            Exception if a version is already registered.
+        """
         if name not in self._procs:
             self._procs[name] = dict(
                 versions={},
@@ -44,9 +78,24 @@ class RpcServer(object):
         self._procs[name]["versions"][version] = fn
 
     def run(self):
+        """ Start recieving requests. (Blocking)
+
+        This method starts the async core main loop. The main loop can be
+        started manually with the same effect if you have multiple RpcServers
+        attached to the same channel.
+        """
         self._chan.start_consuming()
 
     def __init__(self, channel):
+        """ Initialize a RpcService.
+
+        This method requires a connected channel with the proper authority to
+        recieve and publish requests to queues it creates.
+
+        Arguments:
+            channel:
+                A connected pika channel.
+        """
         self._procs = {}
         self._desc = ''
         self._logger = logging.getLogger(__name__)
@@ -54,6 +103,43 @@ class RpcServer(object):
         self.register("_help", "v1", self._help)
 
     def _help(self, name=None, version=None):
+        """ Retrieve details about remote functions.
+
+        Retireve detials about registered methods and version available in this
+        service. All parameters are optional.
+
+        Arguments:
+            name: The name of the method to describe.
+            version: The specific version of the method to describe.
+
+        If no arguments are given, a list of available methods are provided.
+        Format:
+            {
+                help_type: "options",
+                service: <Service Description>,
+                methods: [<List of available methods>]
+            }
+
+        If only name is provided, a list of available versions are provided.
+        Format:
+            {
+                help_type: "versions",
+                method: <Method Name>,
+                versions: [<List of available versions>]
+            }
+
+        If name and version is provided, details of the function are provided.
+        Format:
+            {
+                help_type: "method",
+                method: <Method Name>,
+                version: <Method Version>,
+                desc: <Doc string of target method>
+            }
+
+        Returns:
+            Dict with information about the the provided method.
+        """
         if not name or name not in self._procs:
             return {
                 "help_type": "options",
