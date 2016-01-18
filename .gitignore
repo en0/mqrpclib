@@ -62,3 +62,6 @@ target/
 .idea/
 .ropeproject/
 *.swp
+
+# Ignore symlinks in examples directory
+example/mqrpclib
