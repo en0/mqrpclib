@@ -154,7 +154,7 @@ class RpcProxy(object):
             _timeout = timeout or self._timeout
             _expr_time = time() + _timeout if _timeout > 0 else None
             while not self.has_response(correlation_id):
-                if _expr_time and _expr_time > time():
+                if _expr_time and _expr_time <= time():
                     return RpcResponseMessage(
                         EXCEPTION_CLIENT_TIMEOUT,
                         error_message="Request timed out."
