@@ -1,4 +1,4 @@
-from mqrpclib.rpc_exception import EXCEPTION_CLIENT_TIMEOUT
+from mqrpclib.rpc_exception import EX_CLIENT_TIMEOUT_EXCEPTION
 from channel_mock import ChannelMock
 from mqrpclib import RpcProxy
 from mqrpclib.rpc_request_message import RpcRequestMessage
@@ -14,10 +14,9 @@ class TestRpcServer(TestCase):
         _c = ChannelMock(["test"])
         _p = RpcProxy(_c)
         _p.remote_exec("test", "v1", args={"a": 1}, blocking=False)
-        self.assertEqual(
-            _c.mock_get_queue("test")[0],
-            '{"version": "v1", "args": {"a": 1}}'
-        )
+        _resp = RpcRequestMessage.loads(_c.mock_get_queue("test")[0])
+        self.assertEqual(_resp.version, "v1")
+        self.assertDictEqual(_resp.args, {"a": 1})
 
     def test_remote_exec(self):
         _uuid = str(uuid4())
@@ -47,7 +46,7 @@ class TestRpcServer(TestCase):
         _c = ChannelMock(["test"], _cb)
         _p = RpcProxy(_c)
         resp = _p.remote_exec("test", "v1", args={"a": _uuid}, timeout=2)
-        self.assertEqual(resp.code, EXCEPTION_CLIENT_TIMEOUT)
+        self.assertEqual(resp.code, EX_CLIENT_TIMEOUT_EXCEPTION)
 
     def test_remote_exec_default_timeout(self):
         _uuid = str(uuid4())
@@ -59,4 +58,4 @@ class TestRpcServer(TestCase):
         _c = ChannelMock(["test"], _cb)
         _p = RpcProxy(_c, timeout=2)
         resp = _p.remote_exec("test", "v1", args={"a": _uuid})
-        self.assertEqual(resp.code, EXCEPTION_CLIENT_TIMEOUT)
+        self.assertEqual(resp.code, EX_CLIENT_TIMEOUT_EXCEPTION)
