@@ -1,12 +1,13 @@
 from setuptools import setup
+from mqrpclib.version import *
 
 setup(
-    name="mqrpclib",
-    version="0.2.1",
+    name=PACKAGE_NAME,
+    version=VERSION,
     packages=["mqrpclib"],
     install_requires=['pika'],
     description="Remote Procedure Call using RabbitMQ",
-    author="Ian Laird",
-    author_email="en0@mail.com",
+    author=AUTHOR,
+    author_email=EMAIL,
     url="https://github.com/en0/mqrpclib"
 )
