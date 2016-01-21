@@ -205,7 +205,7 @@ class RpcServer(object):
 
             _ret = _resp.dumps()
 
-        except exp.ExceptionBase as ex:
+        except exp.RpcException as ex:
             self._logger.info("Exception Detected: {}".format(ex))
             _ret = RpcResponseMessage(ex.code, error_message=ex.message).dumps()
 
