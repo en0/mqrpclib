@@ -1,9 +1,10 @@
 from contextlib import contextmanager
+from rpc_exception import EX_CLIENT_TIMEOUT_EXCEPTION
 from rpc_request_message import RpcRequestMessage
 from rpc_response_message import RpcResponseMessage
-from rpc_exception import EX_CLIENT_TIMEOUT_EXCEPTION
 from time import time
 from uuid import uuid4
+from version import VERSION
 import logging
 import pika
 
@@ -161,6 +162,15 @@ class RpcProxy(object):
                     )
 
         _resp = RpcResponseMessage.loads(self._response[correlation_id])
+
+        if _resp._mqrpclib_version != VERSION:
+            self._logger.warning(
+                "Server version is {} and client is {}."
+                "This could cause unexpected behavor.".format(
+                    _resp._mqrpclib_version,
+                    VERSION
+                )
+            )
 
         if clear_response:
             del self._response[correlation_id]
