@@ -1,5 +1,6 @@
-import rpc_exception as exp
+from version import VERSION
 import json
+import rpc_exception as exp
 
 
 class RpcResponseMessage(object):
@@ -9,7 +10,8 @@ class RpcResponseMessage(object):
         return cls(
             data["code"],
             data["return_value"],
-            data["error_message"]
+            data["error_message"],
+            data["_mqrpclib_version"]
         )
 
     def __bool__(self):
@@ -35,17 +37,20 @@ class RpcResponseMessage(object):
             return json.dumps({
                 "code": self._code,
                 "return_value": self._return_value,
-                "error_message": self._error_message
+                "error_message": self._error_message,
+                "_mqrpclib_version": self._mqrpclib_version,
             })
         except ValueError as ex:
             raise exp.ResponseException(
                 "Unable to serialize response: {}".format(ex.message)
             )
 
-    def __init__(self, code, return_value=None, error_message=None):
+    def __init__(self, code, return_value=None,
+                 error_message=None, mqrpclib_version=None):
         self._code = code
         self._return_value = return_value
         self._error_message = error_message
+        self._mqrpclib_version = mqrpclib_version or VERSION
 
     def __repr__(self):
         return "".join([
