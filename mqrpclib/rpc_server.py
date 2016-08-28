@@ -3,6 +3,7 @@ from rpc_response_message import RpcResponseMessage
 import rpc_exception as exp
 import pika
 import logging
+import inspect
 
 
 class RpcServer(object):
@@ -101,6 +102,7 @@ class RpcServer(object):
         self._logger = logging.getLogger(__name__)
         self._chan = channel
         self.register("_help", "v1", self._help)
+        self.register("_inspect", "v1", self._inspect)
 
     def _help(self, name=None, version=None):
         """ Retrieve details about remote functions.
@@ -155,12 +157,43 @@ class RpcServer(object):
             }
 
         else:
-            return {
-                "help_type": "method",
-                "method": name,
-                "version": version,
-                "desc": self._get_function(name, version).__doc__
-            }
+            _ret = self._get_function_description(name, version)
+            _ret["help_type"] = "method"
+            return _ret
+
+    def _inspect(self):
+        """ Retrieve details about each service endpoint including signatures.
+
+        Returns:
+            An array with information about each service endpoint.
+        """
+        _ret = []
+        for name,internals in self._procs.iteritems():
+            for version in internals["versions"]:
+                _ret.append(self._get_function_description(name, version))
+        return _ret
+
+    def _get_function_description(self, name, version):
+        fn = self._get_function(name, version)
+        spec = inspect.getargspec(fn)
+
+        _signature = {
+            "defaults": spec.defaults,
+            "keywords": spec.keywords,
+            "varargs": spec.varargs
+        }
+
+        if type(fn).__name__ == 'instancemethod':
+            _signature["args"] = spec.args[1:]
+        else:
+            _signature["args"] = spec.args
+
+        return {
+            "method": name,
+            "version": version,
+            "desc": fn.__doc__,
+            "signature": _signature
+        }
 
     def _get_function(self, name, version):
         try:
