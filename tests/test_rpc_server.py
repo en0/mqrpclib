@@ -54,6 +54,12 @@ class TestRpcServer(TestCase):
         _s = RpcServer(ChannelMock())
         _uuid = uuid4()
         _s.service_description = _uuid
+        self.assertEqual(_s._help()['description'], _uuid)
+
+    def test_service_name_via_help(self):
+        _s = RpcServer(ChannelMock())
+        _uuid = uuid4()
+        _s.service_name = _uuid
         self.assertEqual(_s._help()['service'], _uuid)
 
     def test_request_handler(self):
@@ -69,7 +75,7 @@ class TestRpcServer(TestCase):
         _m = MethodMock(routing_key="dummy_method")
         _p = PropMock(_reply_to, str(_corr_id))
 
-        _req = RpcRequestMessage("v1", dict(a=a, b=b))
+        _req = RpcRequestMessage("v1", None, dict(a=a, b=b))
 
         _c.mock_clear_queue(_reply_to)
 
@@ -91,7 +97,7 @@ class TestRpcServer(TestCase):
         _m = MethodMock(routing_key="dummy_method")
         _p = PropMock(_reply_to, str(_corr_id))
 
-        _req = RpcRequestMessage("v2", dict(a=None, b=None))
+        _req = RpcRequestMessage("v2", None, dict(a=None, b=None))
 
         _c.mock_clear_queue(_reply_to)
 
@@ -131,7 +137,7 @@ class TestRpcServer(TestCase):
         _m = MethodMock(routing_key="dummy_method")
         _p = PropMock(_reply_to, str(_corr_id))
 
-        _req = RpcRequestMessage("v1", dict(a=a, b=b))
+        _req = RpcRequestMessage("v1", None, dict(a=a, b=b))
 
         _c.mock_clear_queue(_reply_to)
 
