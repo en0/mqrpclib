@@ -3,7 +3,6 @@ from rpc_response_message import RpcResponseMessage
 import rpc_exception as exp
 import pika
 import logging
-import inspect
 
 
 class RpcServer(object):
@@ -31,6 +30,19 @@ class RpcServer(object):
             _chan.basic_qos(prefetch_count=prefetch)
 
         return cls(_chan)
+
+    @property
+    def service_name(self):
+        """ A name for this service.
+
+        This value can be used by the client as a namespace or class name. This
+        value should comply with the requirements of such values.
+        """
+        return self._name
+
+    @service_name.setter
+    def service_name(self, value):
+        self._name = value
 
     @property
     def service_description(self):
@@ -99,10 +111,11 @@ class RpcServer(object):
         """
         self._procs = {}
         self._desc = ''
+        self._name = 'Service'
         self._logger = logging.getLogger(__name__)
         self._chan = channel
-        self.register("_help", "v1", self._help)
-        self.register("_inspect", "v1", self._inspect)
+        self.register("_help", "built-in", self._help)
+        self.register("_inspect", "built-in", self._inspect)
 
     def _help(self, name=None, version=None):
         """ Retrieve details about remote functions.
@@ -145,7 +158,8 @@ class RpcServer(object):
         if not name or name not in self._procs:
             return {
                 "help_type": "options",
-                "service": self._desc,
+                "service": self._name,
+                "description": self._desc,
                 "methods": self._procs.keys(),
             }
 
@@ -171,28 +185,19 @@ class RpcServer(object):
         for name,internals in self._procs.iteritems():
             for version in internals["versions"]:
                 _ret.append(self._get_function_description(name, version))
-        return _ret
+        return {
+            "service": self._name,
+            "description": self._desc,
+            "methods": _ret
+        }
 
     def _get_function_description(self, name, version):
         fn = self._get_function(name, version)
-        spec = inspect.getargspec(fn)
-
-        _signature = {
-            "defaults": spec.defaults,
-            "keywords": spec.keywords,
-            "varargs": spec.varargs
-        }
-
-        if type(fn).__name__ == 'instancemethod':
-            _signature["args"] = spec.args[1:]
-        else:
-            _signature["args"] = spec.args
 
         return {
             "method": name,
             "version": version,
-            "desc": fn.__doc__,
-            "signature": _signature
+            "desc": fn.__doc__
         }
 
     def _get_function(self, name, version):
@@ -226,11 +231,18 @@ class RpcServer(object):
 
             self._logger.debug("Dipsatching Request: {}".format(_req))
 
+            _args = _req.args if _req.args else tuple()
+            _kwargs = _req.kwargs if _req.kwargs else dict()
+
+            _data = _fn(*_args, **_kwargs)
+
+            """
             if _req.args:
                 _data = _fn(**_req.args)
 
             else:
                 _data = _fn()
+            """
 
             _resp = RpcResponseMessage(0, return_value=_data)
 

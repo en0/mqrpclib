@@ -35,7 +35,7 @@ class RpcProxy(object):
         finally:
             conn.close()
 
-    def remote_exec(self, name, version, args, blocking=True, timeout=None):
+    def remote_exec(self, name, version, args=None, kwargs=None, blocking=True, timeout=None):
         """ Execute a remote procedure call on the specified method and version
 
         This method will dispatch a request for a remote execution of the method
@@ -57,7 +57,10 @@ class RpcProxy(object):
             version:
                 The version of the remote method to call.
             args:
-                A dict of the arguments to pass to the remote method.
+                Optional: A tuple of the arguments to pass to the remote method.
+            kwargs:
+                Optional: A dict of the arguments to pass as Keyword args to
+                the remote method.
             blocking:
                 Optional: A flag indicating if this method should wait for a
                 response. Default: True
@@ -69,7 +72,7 @@ class RpcProxy(object):
             correlation_id if blocking=False, else RpcResponseMessage that
             represents the result of the request.
         """
-        _req = RpcRequestMessage(version, args)
+        _req = RpcRequestMessage(version, args, kwargs)
         _corr_id = str(uuid4())
         self._response[_corr_id] = None
 
