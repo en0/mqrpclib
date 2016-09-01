@@ -12,12 +12,12 @@ class TestProxy(RpcProxy):
         return self.remote_exec(
             "method1",
             "v1",
-            args={"a": a, "b": b},
+            kwargs={"a": a, "b": b},
             blocking=False
         )
 
     def method1_v1(self, a, b):
-        return self.remote_exec("method1", "v1", args={"a": a, "b": b})
+        return self.remote_exec("method1", "v1", kwargs={"a": a, "b": b})
 
 
 def show_response(resp):
@@ -28,7 +28,7 @@ def show_response(resp):
 
 
 if __name__ == "__main__":
-        _uri = "mqp://guest:guest@localhost/"
+        _uri = "mqp://guest:guest@archer/"
         _a, _b = 1, 2
 
         print "Testing syncronous example..."

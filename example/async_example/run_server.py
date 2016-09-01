@@ -23,7 +23,7 @@ if __name__ == "__main__":
         """ mqp://username:password@host:port/<virtual_host>[?query-string] """
         logging.basicConfig(level="DEBUG")
         impl = ImplClass()
-        srv = RpcServer.from_uri("mqp://guest:guest@localhost/")
+        srv = RpcServer.from_uri("mqp://guest:guest@archer/")
         srv.service_description = "Rpc service example implementation."
         srv.register("method1", "v1", impl.method1_v1)
         srv.run()
