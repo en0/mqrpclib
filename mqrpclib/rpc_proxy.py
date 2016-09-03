@@ -37,6 +37,10 @@ class RpcProxy(object):
         finally:
             conn.close()
 
+    @property
+    def service_name(self):
+        return self._service_name
+
     def remote_exec(self, name, version, args=None, kwargs=None, blocking=True, timeout=None):
         """ Execute a remote procedure call on the specified method and version
 
