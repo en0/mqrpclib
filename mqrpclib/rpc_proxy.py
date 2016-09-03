@@ -12,7 +12,7 @@ import pika
 class RpcProxy(object):
     @classmethod
     @contextmanager
-    def context(cls, url, timeout=None):
+    def context(cls, service_name, url, timeout=None):
         """ Contextually managed instance of a RpcProxy.
 
         This context manager will create a pika channel from the provided URL
@@ -20,6 +20,8 @@ class RpcProxy(object):
         the channel will be closed.
 
         Arguments:
+            service_name:
+                The name of the service to connect to.
             url:
                 A pika.URLParameters url that defines how to connect to rabbit.
             timeout:
@@ -28,14 +30,18 @@ class RpcProxy(object):
         """
         conn = pika.BlockingConnection(pika.URLParameters(url))
         chan = conn.channel()
-        _proxy = cls(chan, timeout)
+        _proxy = cls(service_name, chan, timeout)
 
         try:
             yield _proxy
         finally:
             conn.close()
 
-    def remote_exec(self, name, version, args, blocking=True, timeout=None):
+    @property
+    def service_name(self):
+        return self._service_name
+
+    def remote_exec(self, name, version, args=None, kwargs=None, blocking=True, timeout=None):
         """ Execute a remote procedure call on the specified method and version
 
         This method will dispatch a request for a remote execution of the method
@@ -57,7 +63,10 @@ class RpcProxy(object):
             version:
                 The version of the remote method to call.
             args:
-                A dict of the arguments to pass to the remote method.
+                Optional: A tuple of the arguments to pass to the remote method.
+            kwargs:
+                Optional: A dict of the arguments to pass as Keyword args to
+                the remote method.
             blocking:
                 Optional: A flag indicating if this method should wait for a
                 response. Default: True
@@ -69,13 +78,14 @@ class RpcProxy(object):
             correlation_id if blocking=False, else RpcResponseMessage that
             represents the result of the request.
         """
-        _req = RpcRequestMessage(version, args)
+        _queue_key = ".".join([self._service_name, name])
+        _req = RpcRequestMessage(version, args, kwargs)
         _corr_id = str(uuid4())
         self._response[_corr_id] = None
 
         self._chan.basic_publish(
             exchange='',
-            routing_key=name,
+            routing_key=_queue_key,
             properties=pika.BasicProperties(
                 correlation_id=_corr_id,
                 reply_to=self._callback_queue
@@ -177,13 +187,16 @@ class RpcProxy(object):
 
         return _resp
 
-    def __init__(self, chan, timeout=None):
+    def __init__(self, service_name, chan, timeout=None):
         """ Initialize an instance of a RPC Class.
 
         The RPC Class should be overridden. It expects a connected channel that
         it will use to declare its handler queues.
 
         Arguments:
+            service_name:
+                The name of the service to connect to on the given channel.
+
             chan:
                 A connected pika channel that has appropriate access to declare
                 queues and consume requests.
@@ -197,6 +210,7 @@ class RpcProxy(object):
         self._logger = logging.getLogger(__name__)
         self._response = {}
         self._timeout = timeout or 30
+        self._service_name = service_name
         self._chan = chan
         self._callback_queue = self._chan.queue_declare(
             exclusive=True

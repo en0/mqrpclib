@@ -6,14 +6,23 @@ import logging
 
 
 class RpcServer(object):
+
+    def _get_queue_name(self, name):
+        return ".".join([self._service_name, name])
+
+    def _get_method_name(self, name):
+        return name.lstrip(self._service_name).lstrip('.')
+
     @classmethod
-    def from_uri(cls, uri, prefetch=None):
+    def from_uri(cls, service_name, uri, prefetch=None):
         """ Create a RPC Sserver using a url.
 
         This method will connect to rabbit and create a channel that is then
         passed to the RpcService initialization.
 
         Arguments:
+            service_name:
+                A Unique name for this service.
             uri:
                 A pika.URLParameters url that defines how to connect.
             prefetch:
@@ -29,16 +38,25 @@ class RpcServer(object):
         if prefetch:
             _chan.basic_qos(prefetch_count=prefetch)
 
-        return cls(_chan)
+        return cls(service_name, _chan)
+
+    @property
+    def service_name(self):
+        """ A name for this service.
+
+        This value can be used by the client as a namespace or class name. This
+        value should comply with the requirements of such values.
+        """
+        return self._service_name
 
     @property
     def service_description(self):
         """ The help method's Service Description value """
-        return self._desc
+        return self._service_desc
 
     @service_description.setter
     def service_description(self, value):
-        self._desc = value
+        self._service_desc = value
 
     def register(self, name, version, fn):
         """ Expose a method or function as a RPC method.
@@ -61,13 +79,15 @@ class RpcServer(object):
             Exception if a version is already registered.
         """
         if name not in self._procs:
+            queue_name = self._get_queue_name(name)
+
             self._procs[name] = dict(
                 versions={},
-                queue=self._chan.queue_declare(name)
+                queue=self._chan.queue_declare(queue_name)
             )
             self._chan.basic_consume(
                 self._request_handler,
-                queue=name
+                queue=queue_name
             )
 
         elif version in self._procs[name]['versions']:
@@ -86,21 +106,25 @@ class RpcServer(object):
         """
         self._chan.start_consuming()
 
-    def __init__(self, channel):
+    def __init__(self, service_name, channel):
         """ Initialize a RpcService.
 
         This method requires a connected channel with the proper authority to
         recieve and publish requests to queues it creates.
 
         Arguments:
+            service_name:
+                A unique name for this service.
             channel:
                 A connected pika channel.
         """
         self._procs = {}
-        self._desc = ''
+        self._service_desc = ''
+        self._service_name = service_name
         self._logger = logging.getLogger(__name__)
         self._chan = channel
-        self.register("_help", "v1", self._help)
+        self.register("_help", "built-in", self._help)
+        self.register("_inspect", "built-in", self._inspect)
 
     def _help(self, name=None, version=None):
         """ Retrieve details about remote functions.
@@ -143,7 +167,8 @@ class RpcServer(object):
         if not name or name not in self._procs:
             return {
                 "help_type": "options",
-                "service": self._desc,
+                "service": self._service_name,
+                "description": self._service_desc,
                 "methods": self._procs.keys(),
             }
 
@@ -155,12 +180,34 @@ class RpcServer(object):
             }
 
         else:
-            return {
-                "help_type": "method",
-                "method": name,
-                "version": version,
-                "desc": self._get_function(name, version).__doc__
-            }
+            _ret = self._get_function_description(name, version)
+            _ret["help_type"] = "method"
+            return _ret
+
+    def _inspect(self):
+        """ Retrieve details about each service endpoint including signatures.
+
+        Returns:
+            An array with information about each service endpoint.
+        """
+        _ret = []
+        for name, internals in self._procs.iteritems():
+            for version in internals["versions"]:
+                _ret.append(self._get_function_description(name, version))
+        return {
+            "service": self._service_name,
+            "description": self._service_desc,
+            "methods": _ret
+        }
+
+    def _get_function_description(self, name, version):
+        fn = self._get_function(name, version)
+
+        return {
+            "method": name,
+            "version": version,
+            "desc": fn.__doc__
+        }
 
     def _get_function(self, name, version):
         try:
@@ -186,18 +233,18 @@ class RpcServer(object):
 
     def _request_handler(self, ch, meth, prop, body):
         _key = meth.routing_key
+        _name = self._get_method_name(_key)
 
         try:
             _req = RpcRequestMessage.loads(body)
-            _fn = self._get_function(_key, _req.version)
+            _fn = self._get_function(_name, _req.version)
 
             self._logger.debug("Dipsatching Request: {}".format(_req))
 
-            if _req.args:
-                _data = _fn(**_req.args)
+            _args = _req.args if _req.args else tuple()
+            _kwargs = _req.kwargs if _req.kwargs else dict()
 
-            else:
-                _data = _fn()
+            _data = _fn(*_args, **_kwargs)
 
             _resp = RpcResponseMessage(0, return_value=_data)
 
@@ -221,7 +268,7 @@ class RpcServer(object):
 
         ch.basic_ack(delivery_tag=meth.delivery_tag)
         if prop.reply_to:
-            self._logger.debug("Responding to request: {}".format(_key))
+            self._logger.debug("Responding to request: {}".format(_name))
             ch.basic_publish(
                 exchange='',
                 routing_key=prop.reply_to,

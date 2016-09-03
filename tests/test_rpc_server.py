@@ -11,7 +11,7 @@ from mqrpclib.rpc_response_message import RpcResponseMessage
 class TestRpcServer(TestCase):
     def test_register(self):
         _uuid = uuid4()
-        _s = RpcServer(ChannelMock())
+        _s = RpcServer("green", ChannelMock())
         _s.register('apple', 'sauce', _uuid)
         self.assertEqual(
             _s._get_function('apple', 'sauce'),
@@ -21,7 +21,7 @@ class TestRpcServer(TestCase):
     def test_register_multi(self):
         _uuid1 = uuid4()
         _uuid2 = uuid4()
-        _s = RpcServer(ChannelMock())
+        _s = RpcServer("green", ChannelMock())
         _s.register('apple', 'sauce', _uuid1)
         _s.register('apple', 'juice', _uuid2)
         self.assertEqual(
@@ -36,7 +36,7 @@ class TestRpcServer(TestCase):
     def test_register_duplicate_version(self):
         _uuid1 = uuid4()
         _uuid2 = uuid4()
-        _s = RpcServer(ChannelMock())
+        _s = RpcServer("green", ChannelMock())
         _s.register('apple', 'sauce', _uuid1)
         self.assertRaises(
             Exception,
@@ -44,19 +44,31 @@ class TestRpcServer(TestCase):
             'apple', 'sauce', _uuid2
         )
 
+    def test_service_name(self):
+        _uuid = str(uuid4())
+        _s = RpcServer(_uuid, ChannelMock())
+        self.assertEqual(_s.service_name, _uuid)
+    
+    def test_service_name_via_help(self):
+        _uuid = str(uuid4())
+        _s = RpcServer(_uuid, ChannelMock())
+        print _s._help()
+        self.assertEqual(_s._help()['service'], _uuid)
+
     def test_service_description(self):
-        _s = RpcServer(ChannelMock())
+        _s = RpcServer("green", ChannelMock())
         _uuid = uuid4()
         _s.service_description = _uuid
         self.assertEqual(_s.service_description, _uuid)
 
     def test_service_description_via_help(self):
-        _s = RpcServer(ChannelMock())
+        _s = RpcServer("green", ChannelMock())
         _uuid = uuid4()
         _s.service_description = _uuid
-        self.assertEqual(_s._help()['service'], _uuid)
+        self.assertEqual(_s._help()['description'], _uuid)
 
     def test_request_handler(self):
+        print ("thisone")
         a, b, c = 1, 2, 3
 
         def dummy_method(a, b):
@@ -66,14 +78,14 @@ class TestRpcServer(TestCase):
         _reply_to = str(uuid4())
 
         _c = ChannelMock([_reply_to])
-        _m = MethodMock(routing_key="dummy_method")
+        _m = MethodMock(routing_key="green.dummy_method")
         _p = PropMock(_reply_to, str(_corr_id))
 
-        _req = RpcRequestMessage("v1", dict(a=a, b=b))
+        _req = RpcRequestMessage("v1", None, dict(a=a, b=b))
 
         _c.mock_clear_queue(_reply_to)
 
-        _s = RpcServer(_c)
+        _s = RpcServer("green", _c)
         _s.register("dummy_method", "v1", dummy_method)
         _s._request_handler(_c, _m, _p, _req.dumps())
 
@@ -88,14 +100,14 @@ class TestRpcServer(TestCase):
         _reply_to = str(uuid4())
 
         _c = ChannelMock([_reply_to])
-        _m = MethodMock(routing_key="dummy_method")
+        _m = MethodMock(routing_key="green.dummy_method")
         _p = PropMock(_reply_to, str(_corr_id))
 
-        _req = RpcRequestMessage("v2", dict(a=None, b=None))
+        _req = RpcRequestMessage("v2", None, dict(a=None, b=None))
 
         _c.mock_clear_queue(_reply_to)
 
-        _s = RpcServer(_c)
+        _s = RpcServer("green", _c)
         _s.register("dummy_method", "v1", dummy_method)
         _s._request_handler(_c, _m, _p, _req.dumps())
 
@@ -107,12 +119,12 @@ class TestRpcServer(TestCase):
         _reply_to = str(uuid4())
 
         _c = ChannelMock([_reply_to])
-        _m = MethodMock(routing_key="")
+        _m = MethodMock(routing_key="green.")
         _p = PropMock(_reply_to, str(_corr_id))
 
         _c.mock_clear_queue(_reply_to)
 
-        _s = RpcServer(_c)
+        _s = RpcServer("green", _c)
         _s._request_handler(_c, _m, _p, "}")
 
         _resp = RpcResponseMessage.loads(_c.mock_get_queue(_reply_to)[0])
@@ -128,14 +140,14 @@ class TestRpcServer(TestCase):
         _reply_to = str(uuid4())
 
         _c = ChannelMock([_reply_to])
-        _m = MethodMock(routing_key="dummy_method")
+        _m = MethodMock(routing_key="green.dummy_method")
         _p = PropMock(_reply_to, str(_corr_id))
 
-        _req = RpcRequestMessage("v1", dict(a=a, b=b))
+        _req = RpcRequestMessage("v1", None, dict(a=a, b=b))
 
         _c.mock_clear_queue(_reply_to)
 
-        _s = RpcServer(_c)
+        _s = RpcServer("green", _c)
         _s.register("dummy_method", "v1", dummy_method)
         _s._request_handler(_c, _m, _p, _req.dumps())
 
