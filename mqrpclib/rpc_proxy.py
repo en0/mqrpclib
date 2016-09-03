@@ -78,13 +78,14 @@ class RpcProxy(object):
             correlation_id if blocking=False, else RpcResponseMessage that
             represents the result of the request.
         """
+        _queue_key = ".".join([self._service_name, name])
         _req = RpcRequestMessage(version, args, kwargs)
         _corr_id = str(uuid4())
         self._response[_corr_id] = None
 
         self._chan.basic_publish(
             exchange='',
-            routing_key=".".join([self._service_name, name]),
+            routing_key=_queue_key,
             properties=pika.BasicProperties(
                 correlation_id=_corr_id,
                 reply_to=self._callback_queue
