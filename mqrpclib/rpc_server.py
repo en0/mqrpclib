@@ -11,7 +11,7 @@ class RpcServer(object):
         return ".".join([self._service_name, name])
 
     def _get_method_name(self, name):
-        return name.lstrip("{}.".format(self._service_name))
+        return name.lstrip(self._service_name).lstrip('.')
 
     @classmethod
     def from_uri(cls, service_name, uri, prefetch=None):
