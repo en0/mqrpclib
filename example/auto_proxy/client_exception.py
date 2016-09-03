@@ -10,28 +10,15 @@ import json
 logging.basicConfig(level="CRITICAL")
 
 
-def show_response(resp):
-    if resp:
-        try:
-            print json.dumps(resp.return_value, indent=2)
-        except:
-            print resp
-    else:
-        print "{}: {}".format(hex(resp.code), resp.error_message)
-
-
 def run(proxy):
     proxy.test_exception()
 
 
 if __name__ == "__main__":
-        _uri = "mqp://guest:guest@192.168.99.100/"
-
+        _uri = "mqp://guest:guest@archer/"
         exception_map = { 10: MyException }
 
-        with RpcProxy.context(_uri) as proxy:
-            TestServiceProxy_V1 = RpcProxyFactory.create_ex(proxy, "v1", exception_map)
-            TestServiceProxy_V2 = RpcProxyFactory.create_ex(proxy, "v2", exception_map)
-
-            myService = TestServiceProxy_V1()
+        with RpcProxyFactory.context(_uri) as factory:
+            TestServiceProxy = factory("autoproxy1", "v1", with_exceptions=True, extended_codes=exception_map)
+            myService = TestServiceProxy()
             run(myService)

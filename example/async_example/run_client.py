@@ -32,12 +32,12 @@ if __name__ == "__main__":
         _a, _b = 1, 2
 
         print "Testing syncronous example..."
-        with TestProxy.context(_uri) as proxy:
+        with TestProxy.context("async1", _uri) as proxy:
             print "Calculating: {} + {}...".format(_a, _b)
             show_response(proxy.method1_v1(_a, _b))
 
         print "\nTesting asyncronous example..."
-        with TestProxy.context(_uri) as proxy:
+        with TestProxy.context("async1", _uri) as proxy:
             print "Calculating: {} + {}...".format(_a, _b)
             _corr_id = proxy.async_method1_v1(_a, _b)
             while not proxy.has_response(_corr_id):

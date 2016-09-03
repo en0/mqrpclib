@@ -25,7 +25,7 @@ class Proxy(RpcProxy):
 
 
 if __name__ == "__main__":
-    with Proxy.context("mqp://guest:guest@archer/") as proxy:
+    with Proxy.context("simple1", "mqp://guest:guest@archer/") as proxy:
         print "With Args"
         print proxy.hello("user")
 

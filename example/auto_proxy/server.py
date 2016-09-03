@@ -69,8 +69,7 @@ if __name__ == "__main__":
 
     impl = Service()
 
-    srv = RpcServer.from_uri("mqp://guest:guest@192.168.99.100/")
-    srv.service_name = "TestService"
+    srv = RpcServer.from_uri("autoproxy1", "mqp://guest:guest@archer/")
     srv.service_description = "Rpc service example implementation."
     srv.register("hello", "v1", impl.hello_v1)
     srv.register("hello", "v2", impl.hello_v2)

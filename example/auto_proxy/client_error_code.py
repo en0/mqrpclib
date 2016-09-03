@@ -22,14 +22,14 @@ def show_response(resp):
 
 def run(proxy):
     res = proxy.test_exception()
+
     show_response(res)
 
 
 if __name__ == "__main__":
-        _uri = "mqp://guest:guest@192.168.99.100/"
-        exception_map = { 10: MyException }
+        _uri = "mqp://guest:guest@archer/"
 
-        with RpcProxy.context(_uri) as proxy:
-            TestServiceProxy_V1 = RpcProxyFactory.create(proxy, "v1")
-            myService = TestServiceProxy_V1()
+        with RpcProxyFactory.context(_uri) as factory:
+            TestServiceProxy = factory("autoproxy1", "v1")
+            myService = TestServiceProxy()
             run(myService)
