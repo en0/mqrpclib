@@ -12,7 +12,7 @@ import pika
 class RpcProxy(object):
     @classmethod
     @contextmanager
-    def context(cls, url, timeout=None):
+    def context(cls, service_name, url, timeout=None):
         """ Contextually managed instance of a RpcProxy.
 
         This context manager will create a pika channel from the provided URL
@@ -20,6 +20,8 @@ class RpcProxy(object):
         the channel will be closed.
 
         Arguments:
+            service_name:
+                The name of the service to connect to.
             url:
                 A pika.URLParameters url that defines how to connect to rabbit.
             timeout:
@@ -28,7 +30,7 @@ class RpcProxy(object):
         """
         conn = pika.BlockingConnection(pika.URLParameters(url))
         chan = conn.channel()
-        _proxy = cls(chan, timeout)
+        _proxy = cls(service_name, chan, timeout)
 
         try:
             yield _proxy
@@ -78,7 +80,7 @@ class RpcProxy(object):
 
         self._chan.basic_publish(
             exchange='',
-            routing_key=name,
+            routing_key=".".join([self._service_name, name]),
             properties=pika.BasicProperties(
                 correlation_id=_corr_id,
                 reply_to=self._callback_queue
@@ -180,13 +182,16 @@ class RpcProxy(object):
 
         return _resp
 
-    def __init__(self, chan, timeout=None):
+    def __init__(self, service_name, chan, timeout=None):
         """ Initialize an instance of a RPC Class.
 
         The RPC Class should be overridden. It expects a connected channel that
         it will use to declare its handler queues.
 
         Arguments:
+            service_name:
+                The name of the service to connect to on the given channel.
+
             chan:
                 A connected pika channel that has appropriate access to declare
                 queues and consume requests.
@@ -200,6 +205,7 @@ class RpcProxy(object):
         self._logger = logging.getLogger(__name__)
         self._response = {}
         self._timeout = timeout or 30
+        self._service_name = service_name
         self._chan = chan
         self._callback_queue = self._chan.queue_declare(
             exclusive=True
